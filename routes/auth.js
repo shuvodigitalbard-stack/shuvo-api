@@ -26,8 +26,9 @@ router.post('/register', async (req, res) => {
     const exists = getOne('SELECT id FROM users WHERE email = ?', [email]);
     if (exists) return res.status(400).json({ message: 'Email already registered' });
     const hp = await bcrypt.hash(password, 12);
-    const r = run('INSERT INTO users (name, email, password, phone) VALUES (?,?,?,?)', [name, email, hp, phone||'']);
-    const user = getOne('SELECT * FROM users WHERE id = ?', [r.lastInsertRowid]);
+    run('INSERT INTO users (name, email, password, phone) VALUES (?,?,?,?)', [name, email, hp, phone||'']);
+    const user = getOne('SELECT * FROM users WHERE email = ?', [email]);
+    if (!user) return res.status(500).json({ message: 'User creation failed' });
     res.status(201).json({ id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, token: generateToken(user.id) });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -42,8 +43,7 @@ router.post('/login', async (req, res) => {
 });
 
 router.get('/me', authMiddleware, (req, res) => {
-  res.json({ id: req.user.id, name: req.user.name, email: req.user.email, phone: req.user.phone, role: req.user.role, avatar: req.user.avatar, created_at: req.user.created_at });
+  res.json({ id: req.user.id, name: req.user.name, email: req.user.email, phone: req.user.phone, role: req.user.role });
 });
 
 module.exports = router;
-module.exports.authMiddleware = authMiddleware;

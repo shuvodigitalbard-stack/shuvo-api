@@ -1,27 +1,21 @@
-const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
-const path = require('path');
-const fs = require('fs');
+const { db, persist, run, getOne } = require('./config/db');
 
 (async () => {
-  const SQL = await initSqlJs();
-  const dbPath = path.join(__dirname, 'data.db');
-  if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-  const db = new SQL.Database();
+  // Clear existing data
+  db().run('DELETE FROM users');
+  db().run('DELETE FROM categories');
+  db().run('DELETE FROM products');
+  db().run('DELETE FROM banners');
+  db().run('DELETE FROM reviews');
+  db().run('DELETE FROM orders');
 
-  db.run(`CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, phone TEXT DEFAULT '', role TEXT DEFAULT 'customer', avatar TEXT DEFAULT '', is_active INTEGER DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-  db.run(`CREATE TABLE categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, description TEXT DEFAULT '', image TEXT DEFAULT '', is_active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-  db.run(`CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, description TEXT DEFAULT '', price REAL NOT NULL DEFAULT 0, discount_price REAL DEFAULT 0, stock INTEGER DEFAULT 0, category_id INTEGER, images TEXT DEFAULT '[]', tags TEXT DEFAULT '[]', is_active INTEGER DEFAULT 1, is_featured INTEGER DEFAULT 0, is_best_selling INTEGER DEFAULT 0, is_new_arrival INTEGER DEFAULT 0, rating REAL DEFAULT 0, review_count INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-  db.run(`CREATE TABLE orders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, order_number TEXT UNIQUE NOT NULL, items TEXT NOT NULL DEFAULT '[]', subtotal REAL NOT NULL DEFAULT 0, shipping REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, order_status TEXT DEFAULT 'pending', payment_status TEXT DEFAULT 'pending', shipping_address TEXT DEFAULT '{}', tracking_number TEXT DEFAULT '', delivered_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-  db.run(`CREATE TABLE reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, user_id INTEGER, rating INTEGER NOT NULL DEFAULT 5, comment TEXT DEFAULT '', is_approved INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-  db.run(`CREATE TABLE banners (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, subtitle TEXT DEFAULT '', image TEXT DEFAULT '', link TEXT DEFAULT '', is_active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-
-  console.log('Tables created');
+  console.log('Cleared existing data');
 
   const adminPass = bcrypt.hashSync('admin123', 12);
-  db.run('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)', ['Shuvo Admin', 'admin@shuvoapi.com', adminPass, 'admin']);
+  run('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)', ['Shuvo Admin', 'admin@shuvoapi.com', adminPass, 'admin']);
   const demoPass = bcrypt.hashSync('demo123', 12);
-  db.run('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)', ['Demo User', 'demo@shuvoapi.com', demoPass, 'customer']);
+  run('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)', ['Demo User', 'demo@shuvoapi.com', demoPass, 'customer']);
 
   const cats = [
     ['Electronics', 'electronics', 'Gadgets and devices', 1],
@@ -31,7 +25,7 @@ const fs = require('fs');
     ['Sports', 'sports', 'Sports and fitness', 5],
     ['Beauty', 'beauty', 'Beauty and personal care', 6],
   ];
-  cats.forEach(c => db.run('INSERT INTO categories (name,slug,description,sort_order) VALUES (?,?,?,?)', c));
+  cats.forEach(c => run('INSERT INTO categories (name,slug,description,sort_order) VALUES (?,?,?,?)', c));
 
   const prods = [
     ['Wireless Bluetooth Headphones', 'wireless-bt-headphones', 'Premium noise-cancelling wireless headphones with 30hr battery', 89.99, 69.99, 150, 1, 1, 1, 0, 4.5],
@@ -48,7 +42,7 @@ const fs = require('fs');
     ['Wireless Charging Pad', 'wireless-charging-pad', 'Qi-compatible wireless charger for all devices', 29.99, null, 350, 1, 0, 0, 0, 4.2],
   ];
   prods.forEach(p => {
-    db.run('INSERT INTO products (name,slug,description,price,discount_price,stock,category_id,is_featured,is_best_selling,is_new_arrival,rating,images,tags) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    run('INSERT INTO products (name,slug,description,price,discount_price,stock,category_id,is_featured,is_best_selling,is_new_arrival,rating,images,tags) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
       [p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], JSON.stringify(['https://picsum.photos/seed/'+p[1]+'/600/400']), JSON.stringify([p[1].split('-')[0]])]);
   });
 
@@ -57,9 +51,8 @@ const fs = require('fs');
     ['New Arrivals', 'Check out the latest products', '/products?new_arrival=true', 2],
     ['Free Shipping', 'On orders over $50', '/products', 3],
   ];
-  bans.forEach(b => db.run('INSERT INTO banners (title,subtitle,link,sort_order) VALUES (?,?,?,?)', b));
+  bans.forEach(b => run('INSERT INTO banners (title,subtitle,link,sort_order) VALUES (?,?,?,?)', b));
 
-  const data = db.export();
-  fs.writeFileSync(dbPath, Buffer.from(data));
+  persist();
   console.log('Seed complete! Admin: admin@shuvoapi.com / admin123 | Demo: demo@shuvoapi.com / demo123');
 })();
