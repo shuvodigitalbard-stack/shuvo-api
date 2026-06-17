@@ -1,7 +1,7 @@
 {
   "name": "shuvo-api",
   "version": "1.0.0",
-  "description": "Shuvo API - Express + SQLite",
+  "description": "Shuvo API - Express + SQLite (sql.js)",
   "main": "server.js",
   "scripts": {
     "start": "NODE_ENV=production node server.js",
@@ -10,10 +10,9 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.10.1",
     "cors": "^2.8.5",
-    "dotenv": "^17.4.2",
     "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "sql.js": "^1.10.3"
   }
 }
