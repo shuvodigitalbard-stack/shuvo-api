@@ -34,7 +34,7 @@ router.get('/featured', (req, res) => {
   try {
     const products = getAll('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1 AND p.is_featured = 1 LIMIT 12');
     products.forEach(p => { try { p.images = JSON.parse(p.images); } catch(e) { p.images = []; } });
-    res.json(products);
+    res.json({ products });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
