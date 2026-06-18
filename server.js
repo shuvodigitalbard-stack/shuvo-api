@@ -8,10 +8,14 @@ const { rateLimit } = require('./middleware/rateLimit');
 
 const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(rateLimit);
+
+// Stricter rate limit for auth
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Too many attempts' } });
+app.use('/api/auth', authLimiter);
 
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, 'public')));
@@ -35,24 +39,7 @@ app.get('/api/health', (req, res) => {
   } catch (e) { res.status(500).json({ status: 'error', message: e.message }); }
 });
 
-app.get('/api', (req, res) => {
-  res.json({ name: 'Shuvo API', version: '1.0.0',
-    endpoints: {
-      'GET /api/health': 'Health check',
-      'POST /api/auth/register': 'Register',
-      'POST /api/auth/login': 'Login',
-      'GET /api/auth/me': 'Get profile (auth)',
-      'GET /api/products': 'List products',
-      'GET /api/products/featured': 'Featured products',
-      'GET /api/categories': 'List categories',
-      'GET /api/banners': 'List banners',
-      'POST /api/orders': 'Create order',
-      'GET /api/reviews/:product_id': 'Product reviews'
-    }
-  });
-});
-
-// SPA fallback - serve index.html for any non-API route
+// SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -60,13 +47,10 @@ app.get('*', (req, res) => {
 // Seed function
 async function seed() {
   const bcrypt = require('bcryptjs');
-  
-  // Check if already seeded
   const existing = getOne('SELECT id FROM users WHERE email = ?', ['admin@shuvoapi.com']);
   if (existing) { console.log('Seed data already exists'); return; }
 
   console.log('Seeding database...');
-  
   const adminPass = bcrypt.hashSync('admin123', 12);
   run('INSERT INTO users (name, email, password, role) VALUES (?,?,?,?)', ['Shuvo Admin', 'admin@shuvoapi.com', adminPass, 'admin']);
   const demoPass = bcrypt.hashSync('demo123', 12);
