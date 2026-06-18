@@ -51,7 +51,7 @@ async function initDB() {
     sort_order INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  persist();
+  try { persist(); } catch(e) { /* ignore on read-only fs */ }
   console.log('SQLite tables initialized');
   return sqlDb;
 }
@@ -69,7 +69,7 @@ function db() {
 // Helper: run SQL and return lastInsertRowId
 function run(sql, params = []) {
   db().run(sql, params);
-  persist();
+  try { persist(); } catch(e) { /* ignore on read-only fs */ }
   const res = db().exec('SELECT last_insert_rowid() as id');
   return { lastInsertRowid: res[0]?.values[0]?.[0] || 0 };
 }

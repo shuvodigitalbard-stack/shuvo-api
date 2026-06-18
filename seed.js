@@ -53,6 +53,6 @@ const { db, persist, run, getOne } = require('./config/db');
   ];
   bans.forEach(b => run('INSERT INTO banners (title,subtitle,link,sort_order) VALUES (?,?,?,?)', b));
 
-  persist();
+  try { persist(); } catch(e) { /* ignore on read-only fs */ }
   console.log('Seed complete! Admin: admin@shuvoapi.com / admin123 | Demo: demo@shuvoapi.com / demo123');
 })();

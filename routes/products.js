@@ -7,22 +7,24 @@ router.get('/', (req, res) => {
   try {
     const { category, search, sort, page = 1, limit = 20, featured, best_selling, new_arrival, min_price, max_price } = req.query;
     let sql = 'SELECT p.*, c.name as category_name, c.slug as category_slug FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1';
-    if (category) sql += " AND c.slug = '" + category + "'";
+    const params = [];
+    if (category) { sql += ' AND c.slug = ?'; params.push(category); }
     if (featured === 'true') sql += ' AND p.is_featured = 1';
     if (best_selling === 'true') sql += ' AND p.is_best_selling = 1';
     if (new_arrival === 'true') sql += ' AND p.is_new_arrival = 1';
-    if (min_price || max_price) sql += ' AND p.price >= ' + (Number(min_price)||0) + ' AND p.price <= ' + (Number(max_price)||999999);
-    if (search) sql += " AND (p.name LIKE '%" + search + "%' OR p.description LIKE '%" + search + "%')";
+    if (min_price || max_price) { sql += ' AND p.price >= ? AND p.price <= ?'; params.push(Number(min_price)||0, Number(max_price)||999999); }
+    if (search) { sql += ' AND (p.name LIKE ? OR p.description LIKE ?)'; params.push('%'+search+'%', '%'+search+'%'); }
     const countSql = sql.replace(/SELECT .* FROM/, 'SELECT COUNT(*) as count FROM');
-    const row = getAll(countSql)[0]; const total = row ? (row.count || row.total || 0) : 0;
+    const row = getAll(countSql, params); const total = row.length ? (row[0].count || 0) : 0;
     switch (sort) {
       case 'price_asc': sql += ' ORDER BY p.price ASC'; break;
       case 'price_desc': sql += ' ORDER BY p.price DESC'; break;
       case 'rating': sql += ' ORDER BY p.rating DESC'; break;
       default: sql += ' ORDER BY p.created_at DESC';
     }
-    sql += ' LIMIT ' + Number(limit) + ' OFFSET ' + ((Number(page)-1) * Number(limit));
-    const products = getAll(sql);
+    sql += ' LIMIT ? OFFSET ?';
+    params.push(Number(limit), (Number(page)-1) * Number(limit));
+    const products = getAll(sql, params);
     products.forEach(p => { try { p.images = JSON.parse(p.images); } catch(e) { p.images = []; } try { p.tags = JSON.parse(p.tags); } catch(e) { p.tags = []; } });
     res.json({ products, total, page: Number(page), pages: Math.ceil(total / limit) });
   } catch (e) { res.status(500).json({ message: e.message }); }
