@@ -7,12 +7,16 @@ const { initDB, db, persist, run, getOne, getAll } = require('./config/db');
 const { rateLimit } = require('./middleware/rateLimit');
 
 const app = express();
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(rateLimit);
 
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
@@ -46,6 +50,11 @@ app.get('/api', (req, res) => {
       'GET /api/reviews/:product_id': 'Product reviews'
     }
   });
+});
+
+// SPA fallback - serve index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Seed function
